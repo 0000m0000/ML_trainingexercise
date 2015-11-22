@@ -1,0 +1,89 @@
+---
+output: 
+  html_document: 
+    keep_md: yes
+---
+### Summary
+
+ Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+ 
+ In this analysis we're going to look at accelerometer data (belt, forearm, arm, and dumbell) of 6 different individuals performing the Unilateral Dumbbell Biceps Curl. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways (exercise class). Each form of the barbell lift that was preformed was labeled as A,B,C,D,E depending on the way the barbell lift was preformed.
+ 
+ The goal is to build a model, using the accelerometer data, to predict the exercise class based on the data with high accuracy. 
+
+### Data preparation and processing   
+
+Required packages are loaded, data are downloaded from the provided sources. 
+
+```{r one, echo = TRUE}
+library(caret)
+library(randomForest)
+library(corrplot)
+```
+
+```{r two, echo = TRUE}
+
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "./pml-training.csv", method="curl")
+
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "./pml-testing.csv", method="curl")
+ 
+# read the csv file for training and clean from NA and filter out non needed columns
+training_data <- read.csv("./pml-training.csv", na.strings= c("NA",""," "))
+training_clean <- training_data[,which(apply(training_data, 2, function(x) {sum(is.na(x))}) == 0)]
+training_clean <- training_clean[8:length(training_clean)]
+```
+
+### Building the model 
+
+In this section, we will build a machine learning model for predicting the classe value based on the other features of the dataset. We will split the training data between an actual "training" set (75%) keeping a 25% to test the performance of the model (to estimate the out-of-sample accuracy). 
+
+ We are going to use the random forest algorithm (full model), since the purpose of the analysis is to have the highest accuracy and also because of it being suitable with non linearity, absence of constraints in the problem definition as far as the parameter selection is concerned, robustness to outliers. 
+ 
+```{r three, echo = TRUE}
+# set seed for reproducible results
+set.seed(100)
+# partitioning the cleaned testing data
+inTrain <- createDataPartition(y = training_clean$classe, p = 0.75, list = FALSE)
+training <- training_clean[inTrain, ]
+test <- training_clean[-inTrain, ]
+
+# predict the classe using the random forest algorithm, full (everything else as a predictor)
+model <- randomForest(classe ~ ., data = training)
+model$confusion
+```
+ 
+### Validating the model 
+
+ We can now use the remaining 25% of the data of the training set, since it has not been used to create our model, to get an unbiased estimation of the out of sample error rate. 
+```{r three2, echo = TRUE}
+
+prediction <- predict(model, newdata=test)
+confusionMatrix(prediction, test$classe)
+print(confusionMatrix(prediction, test$classe), digits=4)
+```
+
+### Conclusions 
+ The model built in this way seems to deliver very good results (out of sample accuracy of more than 99%), therefore it is our choice for the prediction of the classe of exercises (second part of the assignment). 
+
+### Credits.  
+
+  Full credits and many thanks to:
+
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+
+### Appendix. Prediction assigment. 
+
+```{r three3, echo = TRUE}
+# apply the same treatment to the final testing data
+data_test <- read.csv("./pml-testing.csv", na.strings= c("NA",""," "))
+data_test_clean <- data_test[,which(apply(data_test, 2, function(x) {sum(is.na(x))}) == 0)]
+data_test_clean <- data_test_clean[8:length(data_test_clean)]
+
+# predict the classes of the test set and write the results in the requested txt files
+answers <- predict(model, data_test_clean)
+answers <- as.character(answers)
+answers
+# use the function suggested to write the answers
+pml_write_files(answers)
+
+```
