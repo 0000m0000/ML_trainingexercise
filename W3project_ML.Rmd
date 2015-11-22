@@ -84,6 +84,7 @@ answers <- predict(model, data_test_clean)
 answers <- as.character(answers)
 answers
 # use the function suggested to write the answers
+source("pml_write_files.R")
 pml_write_files(answers)
 
 ```
